@@ -1,0 +1,33 @@
+{
+  "report_id": "SNET-20260414090000",
+  "profile": "c5-baseline",
+  "generated_at": "2026-04-14T09:00:00Z",
+  "target": "prod-cluster-eu-1",
+  "results": [
+    {
+      "check_name": "rbac",
+      "findings": [
+        {
+          "id": "RBAC-WILDCARD-cluster-admin-custom",
+          "title": "Wildcard-Berechtigungen erkannt",
+          "area": "RBAC",
+          "criterion": "Rollen dürfen nicht unbeschränkt (*) berechtigen",
+          "description": "ClusterRole enthält Wildcards in verbs/resources.",
+          "resource": {
+            "kind": "ClusterRole",
+            "namespace": null,
+            "name": "cluster-admin-custom"
+          },
+          "evidence": {
+            "summary": "Wildcard in Rule gefunden",
+            "details": ["verbs=['*']"]
+          },
+          "risk": "Missbrauch mit vollständiger Clusterkontrolle möglich",
+          "recommendation": "Least-Privilege durch explizite verbs/resources implementieren.",
+          "severity": "CRITICAL",
+          "heuristic": false
+        }
+      ]
+    }
+  ]
+}

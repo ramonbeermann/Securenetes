@@ -1,0 +1,19 @@
+profile_name: c5-baseline
+cluster_name: prod-cluster-eu-1
+checks:
+  rbac: true
+  secrets: true
+  pod_security: true
+  network: true
+  ingress: true
+  images: true
+  logging_monitoring: true
+  api_server_config: true
+  etcd: true
+  tls: true
+tls_targets:
+  - "https://example.org"
+  - "http://example.org"
+email_contacts:
+  - "security@example.org"
+  - "invalid-mail"
