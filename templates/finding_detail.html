@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+<article class="card detail">
+  <h2>{{ finding.id }} · {{ finding.title }}</h2>
+  <p><span class="badge severity-{{ crate::templates::severity_class(&finding.severity) }}">{{ crate::templates::severity_label(&finding.severity) }}</span></p>
+  <p><strong>Kriterium:</strong> {{ finding.criterion }}</p>
+  <p><strong>Beschreibung:</strong> {{ finding.description }}</p>
+  <p><strong>Risiko:</strong> {{ finding.risk }}</p>
+  <p><strong>Empfehlung:</strong> {{ finding.recommendation }}</p>
+  <h3>Evidenz</h3>
+  <p>{{ finding.evidence.summary }}</p>
+  <ul>
+  {% for line in finding.evidence.details %}
+    <li>{{ line }}</li>
+  {% endfor %}
+  </ul>
+</article>
+{% endblock %}

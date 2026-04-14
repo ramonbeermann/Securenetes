@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+<article class="card">
+  <table>
+    <thead><tr><th>Report-ID</th><th>Profil</th><th>Cluster</th><th>Erstellt am</th></tr></thead>
+    <tbody>
+      {% for report in reports %}
+      <tr>
+        <td>{{ report.report_id }}</td>
+        <td>{{ report.profile }}</td>
+        <td>{{ report.target }}</td>
+        <td>{{ report.generated_at }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</article>
+{% endblock %}

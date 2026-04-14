@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+<article class="card">
+  <table>
+    <thead><tr><th>Name</th><th>Status</th><th>Last scan</th><th>Risk</th><th>Reachable</th></tr></thead>
+    <tbody>
+      {% for c in clusters %}
+      <tr>
+        <td>{{ c.name }}</td>
+        <td>{{ c.status }}</td>
+        <td>{{ crate::templates::fmt_date(&c.last_scan) }}</td>
+        <td>{{ c.risk }}</td>
+        <td>{% if c.reachable %}Yes{% else %}No{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</article>
+{% endblock %}
