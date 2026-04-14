@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="toolbar">
+  <input id="finding-search" type="search" placeholder="Finding suchen..." />
+  <select id="severity-filter">
+    <option value="">Alle Severitys</option>
+    <option>Critical</option>
+    <option>High</option>
+    <option>Medium</option>
+    <option>Low</option>
+    <option>Info</option>
+  </select>
+</div>
+<article class="card">
+  <table id="findings-table">
+    <thead>
+      <tr><th>ID</th><th>Titel</th><th>Severity</th><th>Bereich</th><th>Resource</th></tr>
+    </thead>
+    <tbody>
+      {% for f in findings %}
+      <tr data-severity="{{ crate::templates::severity_label(&f.severity) }}">
+        <td><a href="/findings/{{ f.id }}">{{ f.id }}</a></td>
+        <td>{{ f.title }}</td>
+        <td>
+          <span class="badge severity-{{ crate::templates::severity_class(&f.severity) }}">
+            {{ crate::templates::severity_label(&f.severity) }}
+          </span>
+        </td>
+        <td>{{ f.area }}</td>
+        <td>
+          {% match f.resource %}
+            {% when Some with (res) %}
+              {{ res.kind }}/{{ res.name }}
+            {% when None %}
+              -
+          {% endmatch %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</article>
+{% endblock %}

@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+<article class="card">
+  <form method="post" action="/settings" class="settings-form">
+    <label>Berichtstitel
+      <input name="report_title" value="{{ settings.report_title }}" />
+    </label>
+    <label>Output-Format
+      <select name="output_format">
+        <option value="html">HTML</option>
+        <option value="json">JSON</option>
+        <option value="markdown">Markdown</option>
+      </select>
+    </label>
+    <label>Branding
+      <input name="branding" value="{{ settings.branding }}" />
+    </label>
+    <button class="btn-primary" type="submit">Speichern</button>
+  </form>
+</article>
+{% endblock %}

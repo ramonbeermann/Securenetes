@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{ page_title }} · Securenetes</title>
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+<div class="app-shell">
+  {% include "partials/sidebar.html" %}
+  <main class="content">
+    {% include "partials/header.html" %}
+    <section class="page-body">
+      {% block content %}{% endblock %}
+    </section>
+  </main>
+</div>
+<script src="/static/js/app.js" defer></script>
+</body>
+</html>

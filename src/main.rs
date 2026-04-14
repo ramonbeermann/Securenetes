@@ -1,21 +1,10 @@
-use std::{fs, path::PathBuf};
+use std::{fs, net::SocketAddr, path::PathBuf};
 
 use anyhow::Context;
-use chrono::Utc;
-use clap::{Parser, ValueEnum};
-use kube::Client;
+use clap::{Parser, Subcommand, ValueEnum};
 use securenetes::{
-    checks::{
-        api_config::ApiServerConfigCheck, etcd::EtcdCheck, images::ImagesCheck,
-        ingress::IngressExposureCheck, logging_monitoring::LoggingMonitoringCheck,
-        network::NetworkCheck, pod_security::PodSecurityCheck, rbac::RbacCheck,
-        secrets::SecretsCheck, tls::TlsWebCheck, Check,
-    },
-    config::AuditConfig,
-    models::AuditReport,
-    reporting,
+    config::AuditConfig, models::AuditReport, reporting, services::audit_runner::run_audit, web,
 };
-use tracing::info;
 
 #[derive(Parser, Debug)]
 #[command(
@@ -23,12 +12,26 @@ use tracing::info;
     about = "Kubernetes Security- und C5-orientiertes Audit-Tool"
 )]
 struct Cli {
-    #[arg(short, long, default_value = "examples/config.yaml")]
-    config: PathBuf,
-    #[arg(short, long, default_value = "reports")]
-    output_dir: PathBuf,
-    #[arg(short, long, value_enum, default_value_t = OutputFormat::Markdown)]
-    format: OutputFormat,
+    #[command(subcommand)]
+    command: Option<Commands>,
+}
+
+#[derive(Subcommand, Debug)]
+enum Commands {
+    Audit {
+        #[arg(short, long, default_value = "examples/config.yaml")]
+        config: PathBuf,
+        #[arg(short, long, default_value = "reports")]
+        output_dir: PathBuf,
+        #[arg(short, long, value_enum, default_value_t = OutputFormat::Markdown)]
+        format: OutputFormat,
+    },
+    Serve {
+        #[arg(short, long, default_value = "examples/config.yaml")]
+        config: PathBuf,
+        #[arg(long, default_value = "127.0.0.1:3000")]
+        bind: SocketAddr,
+    },
 }
 
 #[derive(Debug, Clone, ValueEnum)]
@@ -45,80 +48,53 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     let cli = Cli::parse();
-    let config_raw = fs::read_to_string(&cli.config).with_context(|| {
-        format!(
-            "Config konnte nicht gelesen werden: {}",
-            cli.config.display()
-        )
-    })?;
-    let config: AuditConfig = serde_yaml::from_str(&config_raw)?;
 
-    let client = Client::try_default()
-        .await
-        .context("Kubernetes Client init fehlgeschlagen")?;
-    let checks = build_checks(&config);
-    let mut results = Vec::new();
-
-    for check in checks {
-        info!("running check: {}", check.name());
-        results.push(check.run(&client, &config).await?);
+    match cli.command {
+        Some(Commands::Serve { config, bind }) => {
+            let config = load_config(&config)?;
+            web::start_server(bind, config).await?;
+        }
+        Some(Commands::Audit {
+            config,
+            output_dir,
+            format,
+        }) => {
+            let config = load_config(&config)?;
+            run_audit_cli(config, output_dir, format).await?;
+        }
+        None => {
+            let config = load_config(PathBuf::from("examples/config.yaml").as_path())?;
+            run_audit_cli(config, PathBuf::from("reports"), OutputFormat::Markdown).await?;
+        }
     }
 
-    let report = AuditReport {
-        report_id: format!("SNET-{}", Utc::now().format("%Y%m%d%H%M%S")),
-        profile: config.profile_name.clone(),
-        generated_at: Utc::now(),
-        target: config.cluster_name.clone(),
-        results,
-    };
+    Ok(())
+}
 
-    fs::create_dir_all(&cli.output_dir)?;
-    let (filename, content) = match cli.format {
+fn load_config(path: &std::path::Path) -> anyhow::Result<AuditConfig> {
+    let config_raw = fs::read_to_string(path)
+        .with_context(|| format!("Config konnte nicht gelesen werden: {}", path.display()))?;
+    let config: AuditConfig = serde_yaml::from_str(&config_raw)?;
+    Ok(config)
+}
+
+async fn run_audit_cli(
+    config: AuditConfig,
+    output_dir: PathBuf,
+    format: OutputFormat,
+) -> anyhow::Result<()> {
+    let report: AuditReport = run_audit(config).await?;
+
+    fs::create_dir_all(&output_dir)?;
+    let (filename, content) = match format {
         OutputFormat::Markdown => ("report.md", reporting::markdown::render(&report)),
         OutputFormat::Json => ("report.json", reporting::json::render(&report)?),
         OutputFormat::Html => ("report.html", reporting::html::render(&report)),
     };
 
-    let output_path = cli.output_dir.join(filename);
+    let output_path = output_dir.join(filename);
     fs::write(&output_path, content)?;
     println!("Report geschrieben: {}", output_path.display());
 
     Ok(())
-}
-
-fn build_checks(config: &AuditConfig) -> Vec<Box<dyn Check>> {
-    let mut checks: Vec<Box<dyn Check>> = Vec::new();
-
-    if config.checks.rbac {
-        checks.push(Box::new(RbacCheck));
-    }
-    if config.checks.secrets {
-        checks.push(Box::new(SecretsCheck));
-    }
-    if config.checks.pod_security {
-        checks.push(Box::new(PodSecurityCheck));
-    }
-    if config.checks.network {
-        checks.push(Box::new(NetworkCheck));
-    }
-    if config.checks.ingress {
-        checks.push(Box::new(IngressExposureCheck));
-    }
-    if config.checks.images {
-        checks.push(Box::new(ImagesCheck));
-    }
-    if config.checks.logging_monitoring {
-        checks.push(Box::new(LoggingMonitoringCheck));
-    }
-    if config.checks.api_server_config {
-        checks.push(Box::new(ApiServerConfigCheck));
-    }
-    if config.checks.etcd {
-        checks.push(Box::new(EtcdCheck));
-    }
-    if config.checks.tls {
-        checks.push(Box::new(TlsWebCheck));
-    }
-
-    checks
 }

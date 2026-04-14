@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="toolbar">
+  <button id="start-scan" class="btn-primary">Neuen Scan starten</button>
+</div>
+<article class="card">
+  <table id="scans-table">
+    <thead><tr><th>ID</th><th>Status</th><th>Fortschritt</th><th>Start</th><th>Ende</th></tr></thead>
+    <tbody>
+    {% for scan in scans %}
+      <tr>
+        <td>{{ scan.id }}</td>
+        <td>{{ scan.status }}</td>
+        <td>{{ scan.progress }}%</td>
+        <td>{{ scan.started_at }}</td>
+        <td>{{ crate::templates::fmt_date(&scan.finished_at) }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</article>
+{% endblock %}

@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="grid metrics-grid">
+  {% for m in metrics %}
+  <article class="card metric">
+    <p>{{ m.label }}</p>
+    <h2>{{ m.value }}</h2>
+  </article>
+  {% endfor %}
+</div>
+
+<div class="grid two-col">
+  <article class="card">
+    <h3>Letzter Scan</h3>
+    {% match report %}
+      {% when Some with (r) %}
+        <p>Report-ID: {{ r.report_id }}</p>
+        <p>Cluster: {{ r.target }}</p>
+        <p>Profil: {{ r.profile }}</p>
+      {% when None %}
+        <p class="empty">Noch kein Scan vorhanden.</p>
+    {% endmatch %}
+  </article>
+
+  <article class="card">
+    <h3>Top-Risiken</h3>
+    {% if top_risks.is_empty() %}
+      <p class="empty">Keine Findings verfügbar.</p>
+    {% else %}
+      <ul class="list">
+      {% for f in top_risks %}
+        <li><a href="/findings/{{ f.id }}">{{ f.id }} · {{ f.title }}</a></li>
+      {% endfor %}
+      </ul>
+    {% endif %}
+  </article>
+</div>
+
+<article class="card">
+  <h3>Letzte Aktivitäten</h3>
+  <table>
+    <thead><tr><th>Scan</th><th>Status</th><th>Fortschritt</th></tr></thead>
+    <tbody>
+    {% for scan in recent_scans %}
+      <tr><td>{{ scan.id }}</td><td>{{ scan.status }}</td><td>{{ scan.progress }}%</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</article>
+{% endblock %}
