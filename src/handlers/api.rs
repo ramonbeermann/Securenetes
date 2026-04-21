@@ -63,10 +63,11 @@ pub async fn start_scan(State(state): State<SharedState>) -> Json<ApiStatus> {
                 }
                 if let Some(cluster) = data.clusters.first_mut() {
                     cluster.last_scan = Some(Utc::now());
+                    let finding_count = report.all_findings().count();
                     cluster.risk = report
                         .all_findings()
                         .next()
-                        .map(|f| format!("{} findings", report.all_findings().count()))
+                        .map(|_| format!("{finding_count} findings"))
                         .unwrap_or_else(|| "No findings".into());
                 }
                 data.latest_report = Some(report.clone());
