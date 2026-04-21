@@ -13,7 +13,14 @@
         <td>{{ scan.status }}</td>
         <td>{{ scan.progress }}%</td>
         <td>{{ scan.started_at }}</td>
-        <td>{{ crate::templates::fmt_date(&scan.finished_at) }}</td>
+        <td>
+          {% match scan.finished_at %}
+            {% when Some with (finished_at) %}
+              {{ finished_at.format("%Y-%m-%d %H:%M UTC") }}
+            {% when None %}
+              -
+          {% endmatch %}
+        </td>
       </tr>
     {% endfor %}
     </tbody>

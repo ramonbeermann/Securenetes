@@ -25,7 +25,7 @@ impl Check for RbacCheck {
         for role in cr_api.list(&ListParams::default()).await? {
             if let Some(rules) = role.rules.as_ref() {
                 let wildcard = rules.iter().any(|r| {
-                    r.verbs.iter().flatten().any(|v| v == "*")
+                    r.verbs.iter().any(|v| v == "*")
                         || r.resources.iter().flatten().any(|res| res == "*")
                 });
                 if wildcard {
@@ -60,39 +60,32 @@ impl Check for RbacCheck {
         }
 
         for binding in crb_api.list(&ListParams::default()).await? {
-            if let Some(role_ref) = binding
-                .role_ref
-                .api_group
-                .as_ref()
-                .map(|_| &binding.role_ref.name)
-            {
-                if role_ref == "cluster-admin" {
-                    findings.push(Finding {
-                        id: format!(
-                            "RBAC-CRB-CLUSTERADMIN-{}",
-                            binding.metadata.name.clone().unwrap_or_default()
-                        ),
-                        title: "ClusterRoleBinding auf cluster-admin".to_string(),
-                        area: "RBAC".to_string(),
-                        criterion: "Kritische Rollenbindungen sind zu minimieren".to_string(),
-                        description: "Binding delegiert cluster-admin-Rechte.".to_string(),
-                        resource: Some(ResourceReference {
-                            kind: "ClusterRoleBinding".to_string(),
-                            namespace: None,
-                            name: binding.metadata.name.clone().unwrap_or_default(),
-                        }),
-                        evidence: Evidence {
-                            summary: "roleRef.name=cluster-admin".to_string(),
-                            details: vec![format!("subjects={:?}", binding.subjects)],
-                        },
-                        risk: "Vollständige Rechte für gebundene Subjects".to_string(),
-                        recommendation:
-                            "Binding entfernen oder auf minimal erforderliche Rolle reduzieren."
-                                .to_string(),
-                        severity: Severity::High,
-                        heuristic: false,
-                    });
-                }
+            if binding.role_ref.name == "cluster-admin" {
+                findings.push(Finding {
+                    id: format!(
+                        "RBAC-CRB-CLUSTERADMIN-{}",
+                        binding.metadata.name.clone().unwrap_or_default()
+                    ),
+                    title: "ClusterRoleBinding auf cluster-admin".to_string(),
+                    area: "RBAC".to_string(),
+                    criterion: "Kritische Rollenbindungen sind zu minimieren".to_string(),
+                    description: "Binding delegiert cluster-admin-Rechte.".to_string(),
+                    resource: Some(ResourceReference {
+                        kind: "ClusterRoleBinding".to_string(),
+                        namespace: None,
+                        name: binding.metadata.name.clone().unwrap_or_default(),
+                    }),
+                    evidence: Evidence {
+                        summary: "roleRef.name=cluster-admin".to_string(),
+                        details: vec![format!("subjects={:?}", binding.subjects)],
+                    },
+                    risk: "Vollständige Rechte für gebundene Subjects".to_string(),
+                    recommendation:
+                        "Binding entfernen oder auf minimal erforderliche Rolle reduzieren."
+                            .to_string(),
+                    severity: Severity::High,
+                    heuristic: false,
+                });
             }
         }
 

@@ -8,7 +8,14 @@
       <tr>
         <td>{{ c.name }}</td>
         <td>{{ c.status }}</td>
-        <td>{{ crate::templates::fmt_date(&c.last_scan) }}</td>
+        <td>
+          {% match c.last_scan %}
+            {% when Some with (last_scan) %}
+              {{ last_scan.format("%Y-%m-%d %H:%M UTC") }}
+            {% when None %}
+              -
+          {% endmatch %}
+        </td>
         <td>{{ c.risk }}</td>
         <td>{% if c.reachable %}Yes{% else %}No{% endif %}</td>
       </tr>

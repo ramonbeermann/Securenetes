@@ -18,12 +18,12 @@
     </thead>
     <tbody>
       {% for f in findings %}
-      <tr data-severity="{{ crate::templates::severity_label(&f.severity) }}">
+      <tr data-severity="{% match f.severity %}{% when Severity::Critical %}Critical{% when Severity::High %}High{% when Severity::Medium %}Medium{% when Severity::Low %}Low{% when Severity::Info %}Info{% endmatch %}">
         <td><a href="/findings/{{ f.id }}">{{ f.id }}</a></td>
         <td>{{ f.title }}</td>
         <td>
-          <span class="badge severity-{{ crate::templates::severity_class(&f.severity) }}">
-            {{ crate::templates::severity_label(&f.severity) }}
+          <span class="badge severity-{% match f.severity %}{% when Severity::Critical %}critical{% when Severity::High %}high{% when Severity::Medium %}medium{% when Severity::Low %}low{% when Severity::Info %}info{% endmatch %}">
+            {% match f.severity %}{% when Severity::Critical %}Critical{% when Severity::High %}High{% when Severity::Medium %}Medium{% when Severity::Low %}Low{% when Severity::Info %}Info{% endmatch %}
           </span>
         </td>
         <td>{{ f.area }}</td>
