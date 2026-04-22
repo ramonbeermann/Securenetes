@@ -38,5 +38,57 @@ function applyFindingFilters() {
   });
 }
 
+function normalizePayload(formData) {
+  return {
+    cluster_url: (formData.get("cluster_url") || "").toString().trim(),
+    token: (formData.get("token") || "").toString().trim(),
+    ca_cert: ((formData.get("ca_cert") || "").toString().trim() || null),
+    namespace: ((formData.get("namespace") || "").toString().trim() || null),
+  };
+}
+
+async function callKubeApi(url, payload) {
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  return res.json();
+}
+
+const kubeForm = document.getElementById("kube-setup-form");
+const kubeTestBtn = document.getElementById("kube-test-btn");
+const kubeSaveBtn = document.getElementById("kube-save-btn");
+const kubeStatus = document.getElementById("kube-status");
+
+function setKubeStatus(text) {
+  if (kubeStatus) kubeStatus.textContent = text;
+}
+
+if (kubeForm && kubeTestBtn && kubeSaveBtn) {
+  kubeTestBtn.addEventListener("click", async () => {
+    const payload = normalizePayload(new FormData(kubeForm));
+    setKubeStatus("⏳ teste Verbindung");
+
+    const data = await callKubeApi("/api/kube/test", payload);
+    setKubeStatus(data.ok ? "✅ verbunden" : `❌ ${data.message}`);
+  });
+
+  kubeSaveBtn.addEventListener("click", async () => {
+    const payload = normalizePayload(new FormData(kubeForm));
+    setKubeStatus("⏳ speichere Konfiguration");
+
+    const data = await callKubeApi("/api/kube/save", payload);
+    if (data.ok) {
+      setKubeStatus("✅ verbunden");
+      window.location.href = "/";
+      return;
+    }
+
+    setKubeStatus(`❌ ${data.message}`);
+  });
+}
+
 searchInput?.addEventListener("input", applyFindingFilters);
 severityFilter?.addEventListener("change", applyFindingFilters);

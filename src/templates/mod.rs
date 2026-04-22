@@ -2,7 +2,10 @@ use askama::Template;
 use chrono::{DateTime, Utc};
 
 use crate::models::{AuditReport, Finding, Severity};
-use crate::services::app_state::{ClusterInfo, ScanJob, UiSettings};
+use crate::services::{
+    app_state::{ClusterInfo, ScanJob, UiSettings},
+    kube_ui::KubeUiConfig,
+};
 
 #[derive(Debug, Clone)]
 pub struct DashboardMetric {
@@ -60,6 +63,13 @@ pub struct ClustersTemplate {
 pub struct SettingsTemplate {
     pub page_title: &'static str,
     pub settings: UiSettings,
+}
+
+#[derive(Template)]
+#[template(path = "setup.html")]
+pub struct SetupTemplate {
+    pub page_title: &'static str,
+    pub existing: Option<KubeUiConfig>,
 }
 
 pub fn severity_label(severity: &Severity) -> &'static str {

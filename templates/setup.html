@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <h2>Kubernetes Verbindung einrichten</h2>
+  <p class="muted">Hinterlege die Cluster-Zugangsdaten, teste die Verbindung und speichere die Konfiguration.</p>
+  <form id="kube-setup-form" class="settings-form kube-form" autocomplete="off">
+    <label>Cluster URL
+      <input type="url" name="cluster_url" placeholder="https://my-cluster.example:6443" required value="{% match existing %}{% when Some with (cfg) %}{{ cfg.cluster_url }}{% when None %}{% endmatch %}" />
+    </label>
+    <label>Token (Bearer Token)
+      <input type="password" name="token" placeholder="eyJhbGciOi..." required value="{% match existing %}{% when Some with (cfg) %}{{ cfg.token }}{% when None %}{% endmatch %}" />
+    </label>
+    <label>CA Certificate (optional)</label>
+    <textarea name="ca_cert" rows="8" placeholder="-----BEGIN CERTIFICATE----- ...">{% match existing %}{% when Some with (cfg) %}{% match cfg.ca_cert %}{% when Some with (ca) %}{{ ca }}{% when None %}{% endmatch %}{% when None %}{% endmatch %}</textarea>
+    <label>Namespace (optional)
+      <input type="text" name="namespace" placeholder="default" value="{% match existing %}{% when Some with (cfg) %}{% match cfg.namespace %}{% when Some with (ns) %}{{ ns }}{% when None %}{% endmatch %}{% when None %}{% endmatch %}" />
+    </label>
+    <div class="toolbar">
+      <button type="button" class="btn-secondary" id="kube-test-btn">Verbindung testen</button>
+      <button type="button" class="btn-primary" id="kube-save-btn">Speichern</button>
+    </div>
+  </form>
+  <p id="kube-status" class="kube-status">❌ keine Verbindung</p>
+</div>
+{% endblock %}

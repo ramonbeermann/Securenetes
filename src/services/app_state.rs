@@ -4,7 +4,7 @@ use chrono::{DateTime, Utc};
 use serde::Serialize;
 use tokio::sync::RwLock;
 
-use crate::{config::AuditConfig, models::AuditReport};
+use crate::{config::AuditConfig, models::AuditReport, services::kube_ui::KubeUiConfig};
 
 #[derive(Debug, Clone, Serialize)]
 pub struct ScanJob {
@@ -40,11 +40,16 @@ pub struct AppData {
     pub clusters: Vec<ClusterInfo>,
     pub settings: UiSettings,
     pub config: AuditConfig,
+    pub kube_config: Option<KubeUiConfig>,
     pub scan_errors: BTreeMap<String, String>,
 }
 
 impl AppData {
-    pub fn new(config: AuditConfig, seed_report: Option<AuditReport>) -> Self {
+    pub fn new(
+        config: AuditConfig,
+        seed_report: Option<AuditReport>,
+        kube_config: Option<KubeUiConfig>,
+    ) -> Self {
         let report_history = seed_report.clone().map(|r| vec![r]).unwrap_or_default();
         let latest_report = seed_report;
 
@@ -65,6 +70,7 @@ impl AppData {
                 branding: "Securenetes".into(),
             },
             config,
+            kube_config,
             scan_errors: BTreeMap::new(),
         }
     }
