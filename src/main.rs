@@ -3,7 +3,11 @@ use std::{fs, net::SocketAddr, path::PathBuf};
 use anyhow::Context;
 use clap::{Parser, Subcommand, ValueEnum};
 use securenetes::{
-    config::AuditConfig, models::AuditReport, reporting, services::audit_runner::run_audit, web,
+    config::AuditConfig,
+    models::AuditReport,
+    reporting,
+    services::{audit_runner::run_audit, kube_ui::load_kube_ui_config},
+    web,
 };
 
 #[derive(Parser, Debug)]
@@ -83,7 +87,13 @@ async fn run_audit_cli(
     output_dir: PathBuf,
     format: OutputFormat,
 ) -> anyhow::Result<()> {
-    let report: AuditReport = run_audit(config).await?;
+    let kube_ui_config = load_kube_ui_config()?.ok_or_else(|| {
+        anyhow::anyhow!(
+            "Keine Kubernetes UI-Konfiguration gefunden. Starte den Webserver und konfiguriere /setup."
+        )
+    })?;
+
+    let report: AuditReport = run_audit(config, kube_ui_config).await?;
 
     fs::create_dir_all(&output_dir)?;
     let (filename, content) = match format {

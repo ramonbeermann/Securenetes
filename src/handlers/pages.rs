@@ -2,7 +2,7 @@ use askama::Template;
 use axum::{
     extract::{Path, State},
     http::{header, StatusCode},
-    response::{Html, IntoResponse, Response},
+    response::{Html, IntoResponse, Redirect, Response},
     Form,
 };
 use serde::Deserialize;
@@ -12,12 +12,24 @@ use crate::{
     templates::{
         fmt_date, severity_class, severity_label, ClustersTemplate, DashboardMetric,
         DashboardTemplate, FindingDetailTemplate, FindingsTemplate, ReportsTemplate, ScansTemplate,
-        SettingsTemplate,
+        SettingsTemplate, SetupTemplate,
     },
 };
 
-pub async fn dashboard(State(state): State<SharedState>) -> Result<Html<String>, AppError> {
+fn setup_redirect_if_missing(has_config: bool) -> Option<Redirect> {
+    if has_config {
+        None
+    } else {
+        Some(Redirect::to("/setup"))
+    }
+}
+
+pub async fn dashboard(State(state): State<SharedState>) -> Result<Response, AppError> {
     let data = state.read().await;
+    if let Some(redirect) = setup_redirect_if_missing(data.kube_config.is_some()) {
+        return Ok(redirect.into_response());
+    }
+
     let report = data.latest_report.clone();
 
     let findings = report
@@ -71,22 +83,32 @@ pub async fn dashboard(State(state): State<SharedState>) -> Result<Html<String>,
             recent_scans,
         }
         .render()?,
-    ))
+    )
+    .into_response())
 }
 
-pub async fn scans(State(state): State<SharedState>) -> Result<Html<String>, AppError> {
+pub async fn scans(State(state): State<SharedState>) -> Result<Response, AppError> {
     let data = state.read().await;
+    if let Some(redirect) = setup_redirect_if_missing(data.kube_config.is_some()) {
+        return Ok(redirect.into_response());
+    }
+
     Ok(Html(
         ScansTemplate {
             page_title: "Scans",
             scans: data.scans.iter().rev().cloned().collect(),
         }
         .render()?,
-    ))
+    )
+    .into_response())
 }
 
-pub async fn findings(State(state): State<SharedState>) -> Result<Html<String>, AppError> {
+pub async fn findings(State(state): State<SharedState>) -> Result<Response, AppError> {
     let data = state.read().await;
+    if let Some(redirect) = setup_redirect_if_missing(data.kube_config.is_some()) {
+        return Ok(redirect.into_response());
+    }
+
     let findings = data
         .latest_report
         .as_ref()
@@ -99,14 +121,19 @@ pub async fn findings(State(state): State<SharedState>) -> Result<Html<String>, 
             findings,
         }
         .render()?,
-    ))
+    )
+    .into_response())
 }
 
 pub async fn finding_detail(
     Path(id): Path<String>,
     State(state): State<SharedState>,
-) -> Result<Html<String>, AppError> {
+) -> Result<Response, AppError> {
     let data = state.read().await;
+    if let Some(redirect) = setup_redirect_if_missing(data.kube_config.is_some()) {
+        return Ok(redirect.into_response());
+    }
+
     let finding = data
         .latest_report
         .as_ref()
@@ -119,37 +146,66 @@ pub async fn finding_detail(
             finding,
         }
         .render()?,
-    ))
+    )
+    .into_response())
 }
 
-pub async fn reports(State(state): State<SharedState>) -> Result<Html<String>, AppError> {
+pub async fn reports(State(state): State<SharedState>) -> Result<Response, AppError> {
     let data = state.read().await;
+    if let Some(redirect) = setup_redirect_if_missing(data.kube_config.is_some()) {
+        return Ok(redirect.into_response());
+    }
+
     Ok(Html(
         ReportsTemplate {
             page_title: "Reports",
             reports: data.report_history.iter().rev().cloned().collect(),
         }
         .render()?,
-    ))
+    )
+    .into_response())
 }
 
-pub async fn clusters(State(state): State<SharedState>) -> Result<Html<String>, AppError> {
+pub async fn clusters(State(state): State<SharedState>) -> Result<Response, AppError> {
     let data = state.read().await;
+    if let Some(redirect) = setup_redirect_if_missing(data.kube_config.is_some()) {
+        return Ok(redirect.into_response());
+    }
+
     Ok(Html(
         ClustersTemplate {
             page_title: "Clusters",
             clusters: data.clusters.clone(),
         }
         .render()?,
-    ))
+    )
+    .into_response())
 }
 
-pub async fn settings(State(state): State<SharedState>) -> Result<Html<String>, AppError> {
+pub async fn settings(State(state): State<SharedState>) -> Result<Response, AppError> {
     let data = state.read().await;
+    if let Some(redirect) = setup_redirect_if_missing(data.kube_config.is_some()) {
+        return Ok(redirect.into_response());
+    }
+
     Ok(Html(
         SettingsTemplate {
             page_title: "Settings",
             settings: data.settings.clone(),
+        }
+        .render()?,
+    )
+    .into_response())
+}
+
+pub async fn setup(State(state): State<SharedState>) -> Result<Html<String>, AppError> {
+    let data = state.read().await;
+    let existing = data.kube_config.clone();
+
+    Ok(Html(
+        SetupTemplate {
+            page_title: "Kubernetes Setup",
+            existing,
         }
         .render()?,
     ))

@@ -1,11 +1,12 @@
 use axum::{extract::State, Json};
 use chrono::Utc;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tokio::task;
 
 use crate::services::{
     app_state::{ScanJob, SharedState},
     audit_runner::run_audit,
+    kube_ui::{save_kube_ui_config, test_connection, KubeUiConfig},
 };
 
 #[derive(Debug, Serialize)]
@@ -13,6 +14,31 @@ pub struct ApiStatus {
     pub ok: bool,
     pub message: String,
     pub scan_id: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct KubeApiStatus {
+    pub ok: bool,
+    pub message: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct KubeUiPayload {
+    pub cluster_url: String,
+    pub token: String,
+    pub ca_cert: Option<String>,
+    pub namespace: Option<String>,
+}
+
+impl From<KubeUiPayload> for KubeUiConfig {
+    fn from(value: KubeUiPayload) -> Self {
+        Self {
+            cluster_url: value.cluster_url,
+            token: value.token,
+            ca_cert: value.ca_cert,
+            namespace: value.namespace,
+        }
+    }
 }
 
 pub async fn list_scans(State(state): State<SharedState>) -> Json<Vec<ScanJob>> {
@@ -31,6 +57,20 @@ pub async fn list_findings(State(state): State<SharedState>) -> Json<serde_json:
 }
 
 pub async fn start_scan(State(state): State<SharedState>) -> Json<ApiStatus> {
+    let (config, kube_config) = {
+        let data = state.read().await;
+        (data.config.clone(), data.kube_config.clone())
+    };
+
+    let Some(kube_config) = kube_config else {
+        return Json(ApiStatus {
+            ok: false,
+            message: "Keine Kubernetes-Konfiguration gespeichert. Bitte zuerst /setup ausfüllen."
+                .into(),
+            scan_id: None,
+        });
+    };
+
     let scan_id = format!("scan-{}", Utc::now().timestamp_millis());
     {
         let mut data = state.write().await;
@@ -47,12 +87,7 @@ pub async fn start_scan(State(state): State<SharedState>) -> Json<ApiStatus> {
     let state_clone = state.clone();
     let scan_id_clone = scan_id.clone();
     task::spawn(async move {
-        let config = {
-            let data = state_clone.read().await;
-            data.config.clone()
-        };
-
-        match run_audit(config).await {
+        match run_audit(config, kube_config).await {
             Ok(report) => {
                 let mut data = state_clone.write().await;
                 if let Some(scan) = data.scans.iter_mut().find(|s| s.id == scan_id_clone) {
@@ -91,4 +126,41 @@ pub async fn start_scan(State(state): State<SharedState>) -> Json<ApiStatus> {
         message: "Scan started".into(),
         scan_id: Some(scan_id),
     })
+}
+
+pub async fn test_kube_connection(Json(payload): Json<KubeUiPayload>) -> Json<KubeApiStatus> {
+    let config = KubeUiConfig::from(payload);
+    match test_connection(config).await {
+        Ok(_) => Json(KubeApiStatus {
+            ok: true,
+            message: "Verbindung erfolgreich".into(),
+        }),
+        Err(err) => Json(KubeApiStatus {
+            ok: false,
+            message: format!("Verbindung fehlgeschlagen: {err}"),
+        }),
+    }
+}
+
+pub async fn save_kube_connection(
+    State(state): State<SharedState>,
+    Json(payload): Json<KubeUiPayload>,
+) -> Json<KubeApiStatus> {
+    let config = KubeUiConfig::from(payload);
+
+    match save_kube_ui_config(&config) {
+        Ok(_) => {
+            let mut data = state.write().await;
+            data.kube_config = Some(config);
+
+            Json(KubeApiStatus {
+                ok: true,
+                message: "Konfiguration gespeichert".into(),
+            })
+        }
+        Err(err) => Json(KubeApiStatus {
+            ok: false,
+            message: format!("Speichern fehlgeschlagen: {err}"),
+        }),
+    }
 }

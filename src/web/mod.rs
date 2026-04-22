@@ -10,12 +10,17 @@ use crate::{
     config::AuditConfig,
     models::AuditReport,
     routes::app_router,
-    services::app_state::{AppData, SharedState},
+    services::{
+        app_state::{AppData, SharedState},
+        kube_ui::load_kube_ui_config,
+    },
 };
 
 pub async fn start_server(bind: SocketAddr, config: AuditConfig) -> anyhow::Result<()> {
     let seed_report = load_seed_report("examples/sample_report.json").ok();
-    let state: SharedState = std::sync::Arc::new(RwLock::new(AppData::new(config, seed_report)));
+    let kube_config = load_kube_ui_config()?;
+    let state: SharedState =
+        std::sync::Arc::new(RwLock::new(AppData::new(config, seed_report, kube_config)));
 
     let app = Router::new()
         .nest("", app_router(state))
